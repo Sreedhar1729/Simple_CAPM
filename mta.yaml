@@ -1,0 +1,97 @@
+_schema-version: "3.1"
+ID: BookCap
+description: A simple CAP project.
+version: 1.0.0
+modules:
+  - name: BookCap-srv
+    type: nodejs
+    path: gen/srv
+    requires:
+      - name: BookCap-db
+      - name: uaa_BookCap
+    provides:
+      - name: srv-api
+        properties:
+          srv-url: ${default-url}
+    parameters:
+      buildpack: nodejs_buildpack
+      readiness-health-check-http-endpoint: /health
+      readiness-health-check-type: http
+    build-parameters:
+      builder: npm
+  - name: BookCap-db-deployer
+    type: hdb
+    path: db #gen/db
+    requires:
+      - name: BookCap-db
+    parameters:
+      buildpack: nodejs_buildpack
+  - name: BookCap-destination-content
+    type: com.sap.application.content
+    requires:
+      - name: BookCap-destination-service
+        parameters:
+          content-target: true
+      - name: BookCap_html_repo_host
+        parameters:
+          service-key:
+            name: BookCap_html_repo_host-key
+      - name: uaa_BookCap
+        parameters:
+          service-key:
+            name: uaa_BookCap-key
+    parameters:
+      content:
+        instance:
+          destinations:
+            - Name: ManagedApprouterBooks_BookCap_html_repo_host
+              ServiceInstanceName: BookCap-html5-app-host-service
+              ServiceKeyName: BookCap_html_repo_host-key
+              sap.cloud.service: ManagedApprouterBooks
+            - Authentication: OAuth2UserTokenExchange
+              Name: ManagedApprouterBooks_uaa_BookCap
+              ServiceInstanceName: BookCap-xsuaa-service
+              ServiceKeyName: uaa_BookCap-key
+              sap.cloud.service: ManagedApprouterBooks
+          existing_destinations_policy: ignore
+    build-parameters:
+      no-source: true
+resources:
+  - name: BookCap-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+  - name: BookCap-destination-service
+    type: org.cloudfoundry.managed-service
+    parameters:
+      config:
+        HTML5Runtime_enabled: true
+        version: 1.0.0
+      service: destination
+      service-name: BookCap-destination-service
+      service-plan: lite
+  - name: BookCap_html_repo_host
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: html5-apps-repo
+      service-name: BookCap-html5-app-host-service
+      service-plan: app-host
+  - name: uaa_BookCap
+    type: org.cloudfoundry.managed-service
+    parameters:
+      path: ./xs-security.json
+      service: xsuaa
+      service-name: BookCap-xsuaa-service
+      service-plan: application
+      config:
+        xsappname: BookCap-${org}-${space}
+        tenant-mode: dedicated
+parameters:
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm ci
+        - npx cds build --production

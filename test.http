@@ -1,0 +1,12 @@
+### Get the data
+
+GET http://localhost:4004/odata/v4/app-data-model/Authors HTTP/1.1
+
+
+### delete the specific record
+DELETE http://localhost:4004/odata/v4/app-data-model/Authors/1 HTTP/1.1
+
+
+### Get Books details
+
+GET http://localhost:4004/odata/v4/app-data-model/Books HTTP/1.1
